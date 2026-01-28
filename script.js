@@ -20,7 +20,8 @@ const bankData = {
         lastBackup: null,
         totalTransactions: 0,
         monthlyStats: {}
-    }
+    },
+    accounts: null // Will be initialized in initAccountsSection
 };
 
 // ===== SESSION MANAGEMENT =====
@@ -47,6 +48,7 @@ function initBankingApp() {
     setupSessionTimer();
     setupQuickWithdrawals();
     setupDataManagement();
+    initAccountsSection(); // Initialize accounts section
     
     // Update UI with loaded data
     updateUI();
@@ -55,7 +57,732 @@ function initBankingApp() {
     updateCurrentDate();
     updateCurrentYear();
     
+    // Set last login time
+    const lastLoginEl = document.getElementById('last-login');
+    if (lastLoginEl) {
+        const now = new Date();
+        const options = { 
+            weekday: 'short', 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: true 
+        };
+        lastLoginEl.textContent = now.toLocaleTimeString('en-US', options);
+    }
+    
     console.log('BankFlow Application initialized successfully!');
+}
+
+// ===== ACCOUNTS & CARDS FUNCTIONS =====
+function initAccountsSection() {
+    console.log('Initializing Accounts & Cards section...');
+    
+    // Initialize account data if not exists
+    if (!bankData.accounts) {
+        bankData.accounts = {
+            checking: {
+                id: 'CHK-4589-2104',
+                balance: 12450.75,
+                accountNumber: '4589210489324567',
+                routingNumber: '021000021',
+                type: 'checking',
+                status: 'active',
+                lastFour: '4567',
+                expiry: '12/26'
+            },
+            savings: {
+                id: 'SAV-7890-2341',
+                balance: 8450.25,
+                type: 'savings',
+                status: 'active',
+                apy: 2.5,
+                goal: 10000,
+                monthlyInterest: 17.60
+            },
+            credit: {
+                id: 'CC-1234-5678',
+                balance: 1245.50,
+                type: 'credit',
+                status: 'active',
+                limit: 5000,
+                dueDate: '2024-02-15',
+                minPayment: 35.00,
+                apr: 18.9
+            }
+        };
+    }
+    
+    // Setup account buttons and interactions
+    setupAccountButtons();
+    setupCardActions();
+    updateAccountsDisplay();
+    updateTotalBalance();
+}
+
+function setupAccountButtons() {
+    // Copy account number buttons
+    document.querySelectorAll('.copy-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-clipboard-target');
+            const targetElement = document.querySelector(targetId);
+            if (targetElement) {
+                const text = targetElement.textContent;
+                copyToClipboard(text);
+                showToast('Account number copied to clipboard', 'success');
+                
+                // Visual feedback
+                const icon = this.querySelector('i');
+                if (icon) {
+                    icon.className = 'fas fa-check';
+                    setTimeout(() => {
+                        icon.className = 'far fa-copy';
+                    }, 2000);
+                }
+            }
+        });
+    });
+    
+    // Transfer buttons
+    document.querySelectorAll('.transfer-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const accountType = this.getAttribute('data-account');
+            navigateToSection('#transactions');
+            showToast(`Transfer from ${accountType} account selected`, 'info');
+        });
+    });
+    
+    // Deposit/Withdraw buttons for savings
+    document.querySelectorAll('.deposit-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const accountType = this.getAttribute('data-account');
+            if (accountType === 'savings') {
+                navigateToSection('#deposit');
+                const descInput = document.getElementById('deposit-description');
+                if (descInput) descInput.value = 'Savings deposit';
+                showToast('Deposit to savings selected', 'info');
+            }
+        });
+    });
+    
+    document.querySelectorAll('.withdraw-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const accountType = this.getAttribute('data-account');
+            if (accountType === 'savings') {
+                navigateToSection('#withdraw');
+                const descInput = document.getElementById('withdraw-description');
+                if (descInput) descInput.value = 'Savings withdrawal';
+                showToast('Withdraw from savings selected', 'info');
+            }
+        });
+    });
+    
+    // Credit card actions
+    document.querySelectorAll('.pay-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const accountType = this.getAttribute('data-account');
+            if (accountType === 'credit' && bankData.accounts.credit) {
+                showConfirmationModal(
+                    'Pay Credit Card Bill',
+                    `Pay $${bankData.accounts.credit.balance.toFixed(2)} from your checking account?`,
+                    function() {
+                        payCreditCardBill();
+                    }
+                );
+            }
+        });
+    });
+    
+    // View details buttons
+    document.querySelectorAll('.details-btn, .statement-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const accountType = this.getAttribute('data-account');
+            if (accountType === 'checking') {
+                showAccountDetails('checking');
+            } else if (accountType === 'credit') {
+                showAccountDetails('credit');
+            }
+        });
+    });
+    
+    // Account menu buttons
+    document.querySelectorAll('.account-menu-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const accountType = this.getAttribute('data-account');
+            showAccountMenu(accountType);
+        });
+    });
+}
+
+function setupCardActions() {
+    // Freeze card button
+    const freezeBtn = document.getElementById('freeze-card');
+    if (freezeBtn) {
+        freezeBtn.addEventListener('click', function() {
+            const isFrozen = this.classList.toggle('frozen');
+            
+            if (isFrozen) {
+                this.innerHTML = '<i class="fas fa-sun"></i><span>Unfreeze</span>';
+                showToast('Card frozen successfully. Transactions will be declined.', 'success');
+            } else {
+                this.innerHTML = '<i class="fas fa-snowflake"></i><span>Freeze</span>';
+                showToast('Card unfrozen. Transactions are now enabled.', 'success');
+            }
+            
+            // Update card status in data
+            if (bankData.accounts.checking) {
+                bankData.accounts.checking.status = isFrozen ? 'frozen' : 'active';
+                saveDataToStorage();
+            }
+        });
+    }
+    
+    // View card details
+    const viewDetailsBtn = document.getElementById('view-card-details');
+    if (viewDetailsBtn) {
+        viewDetailsBtn.addEventListener('click', function() {
+            if (bankData.accounts.checking) {
+                showConfirmationModal(
+                    'Card Details',
+                    `<div class="card-details-modal">
+                        <div class="detail-row">
+                            <span class="label">Card Number:</span>
+                            <span class="value">${bankData.accounts.checking.accountNumber}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Expiry Date:</span>
+                            <span class="value">${bankData.accounts.checking.expiry || '12/26'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">CVV:</span>
+                            <span class="value">•••</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Card Type:</span>
+                            <span class="value">Visa Debit</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Status:</span>
+                            <span class="value ${bankData.accounts.checking.status === 'frozen' ? 'negative' : 'positive'}">
+                                ${bankData.accounts.checking.status === 'frozen' ? 'Frozen' : 'Active'}
+                            </span>
+                        </div>
+                    </div>`,
+                    null,
+                    'info'
+                );
+            }
+        });
+    }
+    
+    // Replace card
+    const replaceCardBtn = document.getElementById('replace-card');
+    if (replaceCardBtn) {
+        replaceCardBtn.addEventListener('click', function() {
+            showConfirmationModal(
+                'Replace Card',
+                'Request a new card? Your current card will be deactivated immediately and a new one will be mailed within 5-7 business days. There is a $10 replacement fee.',
+                function() {
+                    replaceCard();
+                }
+            );
+        });
+    }
+    
+    // Add account button
+    const addAccountBtn = document.getElementById('add-account-btn');
+    if (addAccountBtn) {
+        addAccountBtn.addEventListener('click', function() {
+            showAddAccountModal();
+        });
+    }
+}
+
+function showAddAccountModal() {
+    showConfirmationModal(
+        'Add New Account',
+        `
+        <div class="account-options">
+            <button class="account-option-btn" data-type="checking">
+                <i class="fas fa-wallet"></i>
+                <span>Checking Account</span>
+                <small>No monthly fees, debit card included</small>
+            </button>
+            <button class="account-option-btn" data-type="savings">
+                <i class="fas fa-piggy-bank"></i>
+                <span>Savings Account</span>
+                <small>2.5% APY, no minimum balance</small>
+            </button>
+            <button class="account-option-btn" data-type="credit">
+                <i class="fas fa-credit-card"></i>
+                <span>Credit Card</span>
+                <small>18.9% APR, $5,000 limit</small>
+            </button>
+        </div>
+        `,
+        null,
+        'custom'
+    );
+    
+    // Add event listeners to option buttons
+    setTimeout(() => {
+        document.querySelectorAll('.account-option-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const accountType = this.getAttribute('data-type');
+                addNewAccount(accountType);
+                hideModal();
+            });
+        });
+    }, 100);
+}
+
+function addNewAccount(accountType) {
+    let newAccount;
+    const accountId = Date.now().toString().slice(-8);
+    const accountSuffix = Math.floor(1000 + Math.random() * 9000);
+    
+    switch(accountType) {
+        case 'checking':
+            newAccount = {
+                id: `CHK-${accountId}`,
+                balance: 0,
+                accountNumber: `4589${Math.floor(1000 + Math.random() * 9000)}${Math.floor(1000 + Math.random() * 9000)}${accountSuffix}`,
+                routingNumber: '021000021',
+                type: 'checking',
+                status: 'active',
+                lastFour: accountSuffix.toString()
+            };
+            
+            // Set expiry 3 years from now
+            const expiryDate = new Date();
+            expiryDate.setFullYear(expiryDate.getFullYear() + 3);
+            newAccount.expiry = `${(expiryDate.getMonth() + 1).toString().padStart(2, '0')}/${expiryDate.getFullYear().toString().slice(-2)}`;
+            break;
+            
+        case 'savings':
+            newAccount = {
+                id: `SAV-${accountId}`,
+                balance: 0,
+                type: 'savings',
+                status: 'active',
+                apy: 2.5,
+                goal: 10000,
+                monthlyInterest: 0
+            };
+            break;
+            
+        case 'credit':
+            newAccount = {
+                id: `CC-${accountId}`,
+                balance: 0,
+                type: 'credit',
+                status: 'active',
+                limit: 5000,
+                dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                minPayment: 0,
+                apr: 18.9
+            };
+            break;
+    }
+    
+    if (!bankData.accounts) bankData.accounts = {};
+    const accountKey = `${accountType}_${accountId}`;
+    bankData.accounts[accountKey] = newAccount;
+    
+    saveDataToStorage();
+    updateAccountsDisplay();
+    
+    showToast(`New ${accountType} account created successfully! Account #: ${newAccount.id}`, 'success');
+}
+
+function updateAccountsDisplay() {
+    if (!bankData.accounts) return;
+    
+    // Update checking account
+    const checking = bankData.accounts.checking;
+    if (checking) {
+        document.getElementById('checking-balance').textContent = checking.balance.toFixed(2);
+        document.getElementById('checking-account-number').textContent = `•••• ${checking.lastFour || '4567'}`;
+        document.getElementById('checking-routing').textContent = checking.routingNumber || '021000021';
+    }
+    
+    // Update savings account
+    const savings = bankData.accounts.savings;
+    if (savings) {
+        document.getElementById('savings-balance').textContent = savings.balance.toFixed(2);
+        document.getElementById('savings-account-number').textContent = savings.id || 'SAV-7890-2341';
+        
+        // Calculate and update interest
+        if (savings.apy && savings.balance) {
+            const monthlyInterest = (savings.balance * (savings.apy / 100)) / 12;
+            const growthEl = document.querySelector('.account-growth .growth-amount');
+            if (growthEl) {
+                growthEl.textContent = `+$${monthlyInterest.toFixed(2)}`;
+                growthEl.className = 'growth-amount positive';
+            }
+        }
+        
+        // Update savings progress
+        if (savings.goal && savings.balance) {
+            const progress = Math.min((savings.balance / savings.goal) * 100, 100);
+            const progressBar = document.querySelector('.goal-progress .progress-bar');
+            if (progressBar) {
+                progressBar.style.width = `${progress}%`;
+            }
+            
+            const goalInfo = document.querySelector('.goal-info');
+            if (goalInfo) {
+                goalInfo.innerHTML = `<span>Goal: $${savings.goal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span><span>${progress.toFixed(0)}%</span>`;
+            }
+        }
+    }
+    
+    // Update credit card
+    const credit = bankData.accounts.credit;
+    if (credit) {
+        document.getElementById('credit-balance').textContent = credit.balance.toFixed(2);
+        
+        // Update due date
+        const dueDateEl = document.getElementById('credit-due-date');
+        if (dueDateEl && credit.dueDate) {
+            const dueDate = new Date(credit.dueDate);
+            dueDateEl.textContent = dueDate.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        }
+        
+        // Update utilization
+        if (credit.limit && credit.balance !== undefined) {
+            const utilization = (credit.balance / credit.limit) * 100;
+            const utilizationBar = document.querySelector('.utilization-bar .progress-bar');
+            const utilizationPercent = document.querySelector('.utilization-header span:last-child');
+            
+            if (utilizationBar) {
+                utilizationBar.style.width = `${utilization}%`;
+                // Color based on utilization
+                if (utilization > 80) {
+                    utilizationBar.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+                } else if (utilization > 50) {
+                    utilizationBar.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+                } else {
+                    utilizationBar.style.background = 'var(--gradient-primary)';
+                }
+            }
+            if (utilizationPercent) {
+                utilizationPercent.textContent = `${utilization.toFixed(0)}%`;
+                utilizationPercent.className = utilization > 50 ? 'negative' : 'positive';
+            }
+        }
+    }
+    
+    // Update card display
+    const cardLastFour = document.getElementById('card-last-four');
+    const cardExpiry = document.getElementById('card-expiry');
+    
+    if (cardLastFour && checking && checking.lastFour) {
+        cardLastFour.textContent = checking.lastFour;
+    }
+    
+    if (cardExpiry && checking && checking.expiry) {
+        cardExpiry.textContent = checking.expiry;
+    }
+    
+    // Update freeze button state
+    const freezeBtn = document.getElementById('freeze-card');
+    if (freezeBtn && checking && checking.status === 'frozen') {
+        freezeBtn.classList.add('frozen');
+        freezeBtn.innerHTML = '<i class="fas fa-sun"></i><span>Unfreeze</span>';
+    }
+}
+
+function updateTotalBalance() {
+    if (!bankData.accounts) return;
+    
+    let totalBalance = 0;
+    let checkingBalance = 0;
+    
+    // Calculate total balance from all accounts
+    Object.values(bankData.accounts).forEach(account => {
+        if (account.type === 'checking' || account.type === 'savings') {
+            totalBalance += account.balance;
+            if (account.type === 'checking') {
+                checkingBalance = account.balance;
+            }
+        } else if (account.type === 'credit') {
+            // Subtract credit card balance
+            totalBalance -= account.balance;
+        }
+    });
+    
+    // Update main balance display
+    bankData.balance = totalBalance;
+    
+    // Update UI elements
+    const elements = {
+        'current-balance': totalBalance.toFixed(2),
+        'deposit-balance-preview': checkingBalance.toFixed(2),
+        'withdraw-balance-preview': checkingBalance.toFixed(2),
+        'max-withdrawal': Math.max(0, checkingBalance - bankData.settings.minBalance).toFixed(2)
+    };
+    
+    Object.entries(elements).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = value;
+    });
+    
+    saveDataToStorage();
+}
+
+function payCreditCardBill() {
+    if (!bankData.accounts.checking || !bankData.accounts.credit) {
+        showToast('Unable to process payment', 'error');
+        return;
+    }
+    
+    const amount = bankData.accounts.credit.balance;
+    
+    // Check if checking has enough funds
+    if (bankData.accounts.checking.balance < amount) {
+        showToast('Insufficient funds in checking account', 'error');
+        return;
+    }
+    
+    // Process payment
+    bankData.accounts.checking.balance -= amount;
+    bankData.accounts.credit.balance = 0;
+    
+    // Add transaction record
+    const transaction = {
+        id: Date.now(),
+        type: 'withdraw',
+        amount: amount,
+        description: 'Credit Card Payment',
+        date: new Date(),
+        balance: bankData.accounts.checking.balance
+    };
+    
+    bankData.transactions.unshift(transaction);
+    saveDataToStorage();
+    
+    updateAccountsDisplay();
+    updateTotalBalance();
+    updateRecentTransactions();
+    updateTransactionsList();
+    updateTransactionSummary();
+    
+    showToast(`Credit card payment of $${amount.toFixed(2)} completed successfully!`, 'success');
+}
+
+function replaceCard() {
+    if (!bankData.accounts.checking) return;
+    
+    // Generate new card details
+    const newLastFour = Math.floor(1000 + Math.random() * 9000);
+    const expiryDate = new Date();
+    expiryDate.setFullYear(expiryDate.getFullYear() + 3);
+    const newExpiry = `${(expiryDate.getMonth() + 1).toString().padStart(2, '0')}/${expiryDate.getFullYear().toString().slice(-2)}`;
+    
+    // Update card data
+    bankData.accounts.checking.lastFour = newLastFour.toString();
+    bankData.accounts.checking.expiry = newExpiry;
+    bankData.accounts.checking.status = 'active'; // Ensure card is active
+    
+    saveDataToStorage();
+    updateAccountsDisplay();
+    
+    // Reset freeze button
+    const freezeBtn = document.getElementById('freeze-card');
+    if (freezeBtn) {
+        freezeBtn.classList.remove('frozen');
+        freezeBtn.innerHTML = '<i class="fas fa-snowflake"></i><span>Freeze</span>';
+    }
+    
+    showToast('New card ordered! Will arrive in 5-7 business days. Your current card is now deactivated.', 'success');
+}
+
+function showAccountDetails(accountType) {
+    const account = bankData.accounts[accountType];
+    if (!account) return;
+    
+    let detailsHTML = '';
+    
+    if (accountType === 'checking') {
+        detailsHTML = `
+            <div class="account-details-modal">
+                <div class="detail-row">
+                    <span class="label">Account Type:</span>
+                    <span class="value">Checking</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Account Number:</span>
+                    <span class="value">${account.accountNumber}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Routing Number:</span>
+                    <span class="value">${account.routingNumber}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Available Balance:</span>
+                    <span class="value positive">$${account.balance.toFixed(2)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Status:</span>
+                    <span class="value ${account.status === 'active' ? 'positive' : 'negative'}">
+                        ${account.status.charAt(0).toUpperCase() + account.status.slice(1)}
+                    </span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Opened:</span>
+                    <span class="value">Jan 15, 2023</span>
+                </div>
+            </div>
+        `;
+    } else if (accountType === 'credit') {
+        const dueDate = new Date(account.dueDate);
+        detailsHTML = `
+            <div class="account-details-modal">
+                <div class="detail-row">
+                    <span class="label">Card Type:</span>
+                    <span class="value">Visa Credit</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Current Balance:</span>
+                    <span class="value">$${account.balance.toFixed(2)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Credit Limit:</span>
+                    <span class="value">$${account.limit.toFixed(2)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Available Credit:</span>
+                    <span class="value positive">$${(account.limit - account.balance).toFixed(2)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Payment Due Date:</span>
+                    <span class="value">${dueDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Minimum Payment:</span>
+                    <span class="value">$${account.minPayment.toFixed(2)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">APR:</span>
+                    <span class="value">${account.apr}%</span>
+                </div>
+            </div>
+        `;
+    }
+    
+    showConfirmationModal(
+        `${accountType.charAt(0).toUpperCase() + accountType.slice(1)} Account Details`,
+        detailsHTML,
+        null,
+        'info'
+    );
+}
+
+function showAccountMenu(accountType) {
+    const account = bankData.accounts[accountType];
+    if (!account) return;
+    
+    let menuHTML = '';
+    
+    if (accountType === 'checking') {
+        menuHTML = `
+            <div class="account-menu-options">
+                <button class="menu-option" data-action="view-statement">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    <span>View Statement</span>
+                </button>
+                <button class="menu-option" data-action="transfer-funds">
+                    <i class="fas fa-exchange-alt"></i>
+                    <span>Transfer Funds</span>
+                </button>
+                <button class="menu-option" data-action="set-alerts">
+                    <i class="fas fa-bell"></i>
+                    <span>Set Alerts</span>
+                </button>
+                <button class="menu-option" data-action="close-account">
+                    <i class="fas fa-times-circle"></i>
+                    <span>Close Account</span>
+                </button>
+            </div>
+        `;
+    }
+    
+    showConfirmationModal(
+        'Account Options',
+        menuHTML,
+        null,
+        'custom'
+    );
+    
+    // Add event listeners to menu options
+    setTimeout(() => {
+        document.querySelectorAll('.menu-option').forEach(option => {
+            option.addEventListener('click', function() {
+                const action = this.getAttribute('data-action');
+                handleAccountMenuAction(accountType, action);
+                hideModal();
+            });
+        });
+    }, 100);
+}
+
+function handleAccountMenuAction(accountType, action) {
+    switch(action) {
+        case 'view-statement':
+            showToast('Generating statement... This feature is not implemented in demo.', 'info');
+            break;
+        case 'transfer-funds':
+            navigateToSection('#transactions');
+            showToast('Transfer funds selected', 'info');
+            break;
+        case 'set-alerts':
+            showToast('Alerts configuration - This feature is not implemented in demo.', 'info');
+            break;
+        case 'close-account':
+            showConfirmationModal(
+                'Close Account',
+                'Are you sure you want to close this account? All funds will be transferred to your primary checking account.',
+                function() {
+                    closeAccount(accountType);
+                }
+            );
+            break;
+    }
+}
+
+function closeAccount(accountType) {
+    const account = bankData.accounts[accountType];
+    if (!account) return;
+    
+    // Transfer balance to checking
+    if (account.balance > 0 && bankData.accounts.checking) {
+        bankData.accounts.checking.balance += account.balance;
+        
+        // Add transaction record
+        const transaction = {
+            id: Date.now(),
+            type: 'deposit',
+            amount: account.balance,
+            description: `Account closure - ${accountType}`,
+            date: new Date(),
+            balance: bankData.accounts.checking.balance
+        };
+        
+        bankData.transactions.unshift(transaction);
+    }
+    
+    // Remove account
+    delete bankData.accounts[accountType];
+    
+    saveDataToStorage();
+    updateAccountsDisplay();
+    updateTotalBalance();
+    
+    showToast(`${accountType} account closed successfully.`, 'success');
 }
 
 // ===== LOCAL STORAGE FUNCTIONS =====
@@ -87,6 +814,11 @@ function loadDataFromStorage() {
                 bankData.stats = { ...bankData.stats, ...parsedData.stats };
             }
             
+            // Load accounts if they exist
+            if (parsedData.accounts) {
+                bankData.accounts = parsedData.accounts;
+            }
+            
             console.log('Data loaded from localStorage');
             
             // If no transactions exist, create initial demo data
@@ -106,8 +838,44 @@ function loadDataFromStorage() {
 function createInitialDemoData() {
     console.log('Creating initial demo data...');
     
-    // Set a consistent initial balance
-    bankData.balance = 1250.75;
+    // Set initial account data
+    bankData.accounts = {
+        checking: {
+            id: 'CHK-4589-2104',
+            balance: 12450.75,
+            accountNumber: '4589210489324567',
+            routingNumber: '021000021',
+            type: 'checking',
+            status: 'active',
+            lastFour: '4567',
+            expiry: '12/26'
+        },
+        savings: {
+            id: 'SAV-7890-2341',
+            balance: 8450.25,
+            type: 'savings',
+            status: 'active',
+            apy: 2.5,
+            goal: 10000,
+            monthlyInterest: 17.60
+        },
+        credit: {
+            id: 'CC-1234-5678',
+            balance: 1245.50,
+            type: 'credit',
+            status: 'active',
+            limit: 5000,
+            dueDate: '2024-02-15',
+            minPayment: 35.00,
+            apr: 18.9
+        }
+    };
+    
+    // Calculate total balance
+    bankData.balance = bankData.accounts.checking.balance + 
+                       bankData.accounts.savings.balance - 
+                       bankData.accounts.credit.balance;
+    
     bankData.transactions = [
         { 
             id: Date.now() - 86400000 * 3, // 3 days ago
@@ -255,9 +1023,14 @@ function deposit(amount, description = 'Deposit') {
     // Round to 2 decimal places
     amount = Math.round(amount * 100) / 100;
     
-    // Update balance
-    bankData.balance += amount;
-    bankData.balance = Math.round(bankData.balance * 100) / 100;
+    // Update checking account balance
+    if (bankData.accounts.checking) {
+        bankData.accounts.checking.balance += amount;
+        bankData.accounts.checking.balance = Math.round(bankData.accounts.checking.balance * 100) / 100;
+    }
+    
+    // Update total balance
+    updateTotalBalance();
     
     // Create transaction record
     const transaction = {
@@ -266,7 +1039,7 @@ function deposit(amount, description = 'Deposit') {
         amount: amount,
         description: description,
         date: new Date(),
-        balance: bankData.balance
+        balance: bankData.accounts.checking ? bankData.accounts.checking.balance : bankData.balance
     };
     
     // Add to transactions
@@ -309,14 +1082,20 @@ function withdraw(amount, description = 'Withdrawal') {
     amount = Math.round(amount * 100) / 100;
     
     // Check minimum balance after withdrawal
-    if (bankData.balance - amount < bankData.settings.minBalance) {
+    if (bankData.accounts.checking && 
+        bankData.accounts.checking.balance - amount < bankData.settings.minBalance) {
         showToast(`Account must maintain a minimum balance of $${bankData.settings.minBalance.toFixed(2)}`, 'error');
         return false;
     }
     
-    // Update balance
-    bankData.balance -= amount;
-    bankData.balance = Math.round(bankData.balance * 100) / 100;
+    // Update checking account balance
+    if (bankData.accounts.checking) {
+        bankData.accounts.checking.balance -= amount;
+        bankData.accounts.checking.balance = Math.round(bankData.accounts.checking.balance * 100) / 100;
+    }
+    
+    // Update total balance
+    updateTotalBalance();
     
     // Create transaction record
     const transaction = {
@@ -325,7 +1104,7 @@ function withdraw(amount, description = 'Withdrawal') {
         amount: amount,
         description: description,
         date: new Date(),
-        balance: bankData.balance
+        balance: bankData.accounts.checking ? bankData.accounts.checking.balance : bankData.balance
     };
     
     // Add to transactions
@@ -358,7 +1137,8 @@ function validateTransaction(amount, type) {
             return { valid: false, message: `Maximum deposit amount is $${bankData.settings.maxDepositPerTransaction.toFixed(2)} per transaction` };
         }
     } else if (type === 'withdraw') {
-        if (amount > bankData.balance) {
+        const availableBalance = bankData.accounts.checking ? bankData.accounts.checking.balance : bankData.balance;
+        if (amount > availableBalance) {
             return { valid: false, message: 'Insufficient funds for this withdrawal' };
         }
     }
@@ -376,23 +1156,18 @@ function updateUI() {
     updateLimitBars();
     updateStatsDisplay();
     updateMiniCards();
+    updateAccountsDisplay();
+    updateTotalBalance();
 }
 
 function updateBalanceDisplay() {
-    const elements = {
-        'current-balance': bankData.balance.toFixed(2),
-        'deposit-balance-preview': bankData.balance.toFixed(2),
-        'withdraw-balance-preview': bankData.balance.toFixed(2),
-        'max-withdrawal': Math.max(0, bankData.balance - bankData.settings.minBalance).toFixed(2),
-        'today-deposits': getTodayDeposits().toFixed(2),
-        'today-withdrawals': getTodayWithdrawals().toFixed(2),
-        'total-transactions-count': bankData.transactions.length
-    };
+    // These are now handled by updateTotalBalance and updateAccountsDisplay
+    const todayDeposits = getTodayDeposits();
+    const todayWithdrawals = getTodayWithdrawals();
     
-    Object.entries(elements).forEach(([id, value]) => {
-        const element = document.getElementById(id);
-        if (element) element.textContent = value;
-    });
+    document.getElementById('today-deposits').textContent = todayDeposits.toFixed(2);
+    document.getElementById('today-withdrawals').textContent = todayWithdrawals.toFixed(2);
+    document.getElementById('total-transactions-count').textContent = bankData.transactions.length;
     
     // Update monthly income/expenses in balance card
     updateMonthlyStats();
@@ -968,7 +1743,7 @@ function importData(file) {
                 function() {
                     // Update bankData
                     bankData.balance = importedData.balance;
-                    bankData.transactions = importedData.transactions.map(t => ({
+                    bankData.transactions = (importedData.transactions || []).map(t => ({
                         ...t,
                         date: new Date(t.date)
                     }));
@@ -983,6 +1758,10 @@ function importData(file) {
                     
                     if (importedData.stats) {
                         bankData.stats = { ...bankData.stats, ...importedData.stats };
+                    }
+                    
+                    if (importedData.accounts) {
+                        bankData.accounts = importedData.accounts;
                     }
                     
                     // Save to localStorage
@@ -1007,7 +1786,14 @@ function importData(file) {
 function clearTransactionHistory() {
     // Keep only the initial demo transactions
     bankData.transactions = bankData.transactions.slice(-3); // Keep last 3 (demo data)
-    bankData.balance = 1250.75; // Reset to initial balance
+    
+    // Reset account balances to demo values
+    if (bankData.accounts) {
+        bankData.accounts.checking.balance = 12450.75;
+        bankData.accounts.savings.balance = 8450.25;
+        bankData.accounts.credit.balance = 1245.50;
+    }
+    
     saveDataToStorage();
     updateUI();
     showToast('Transaction history cleared (demo data kept)', 'success');
@@ -1164,14 +1950,31 @@ function setupModal() {
 
 let confirmCallback = null;
 
-function showConfirmationModal(title, message, callback) {
+function showConfirmationModal(title, message, callback, type = 'confirm') {
     const modal = document.getElementById('confirmation-modal');
     const modalTitle = modal.querySelector('.modal-header h3');
     const modalMessage = document.getElementById('modal-message');
     const confirmBtn = document.getElementById('modal-confirm');
+    const cancelBtn = document.getElementById('modal-cancel');
     
     if (modalTitle) modalTitle.textContent = title;
-    if (modalMessage) modalMessage.textContent = message;
+    if (modalMessage) {
+        if (type === 'custom') {
+            modalMessage.innerHTML = message;
+        } else {
+            modalMessage.textContent = message;
+        }
+    }
+    
+    // Set button text based on type
+    if (type === 'info') {
+        confirmBtn.textContent = 'OK';
+        cancelBtn.style.display = 'none';
+    } else {
+        confirmBtn.textContent = 'Confirm';
+        cancelBtn.style.display = 'inline-block';
+    }
+    
     confirmCallback = callback;
     
     // Remove previous event listener
@@ -1309,6 +2112,20 @@ function showToast(message, type = 'info') {
     }, 5000);
 }
 
+// ===== UTILITY FUNCTIONS =====
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).catch(err => {
+        console.error('Failed to copy: ', err);
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+    });
+}
+
 // ===== WINDOW UNLOAD WARNING =====
 window.addEventListener('beforeunload', function(e) {
     // Check if there are unsaved changes (for forms)
@@ -1345,8 +2162,10 @@ window.onerror = function(message, source, lineno, colno, error) {
 window.BankFlow = {
     getBalance: () => bankData.balance,
     getTransactions: () => bankData.transactions,
+    getAccounts: () => bankData.accounts,
     deposit: deposit,
     withdraw: withdraw,
+    payCreditCard: payCreditCardBill,
     resetData: createInitialDemoData,
     exportData: exportToCSV,
     showToast: showToast
