@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <!-- Navigation Bar -->
@@ -230,26 +231,210 @@
 
                 <!-- Accounts & Cards -->
                 <div class="accounts-section">
-                    <h3 class="section-title">My Accounts & Cards</h3>
+                    <div class="section-header">
+                        <h3 class="section-title">My Accounts & Cards</h3>
+                        <button id="add-account-btn" class="btn btn-secondary btn-sm" aria-label="Add new account">
+                            <i class="fas fa-plus"></i> Add Account
+                        </button>
+                    </div>
+                    
                     <div class="accounts-grid">
-                        <div class="account-card primary" role="region" aria-label="Primary Visa card ending in 4567">
-                            <div class="card-chip">
-                                <i class="fas fa-microchip" aria-hidden="true"></i>
+                        <!-- Primary Checking Account Card -->
+                        <div class="account-card primary" role="region" aria-label="Primary Checking account">
+                            <div class="account-header">
+                                <div class="account-type-badge">
+                                    <i class="fas fa-wallet"></i>
+                                    <span>Checking</span>
+                                </div>
+                                <div class="account-menu">
+                                    <button class="account-menu-btn" aria-label="Account options" data-account="primary">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                </div>
                             </div>
-                            <div class="card-number">•••• 4567</div>
-                            <div class="card-info">
-                                <div class="card-holder">Alex Johnson</div>
-                                <div class="card-expiry">12/26</div>
+                            
+                            <div class="account-balance">
+                                <span class="balance-label">Available Balance</span>
+                                <span class="balance-amount">$<span id="checking-balance">12,450.75</span></span>
                             </div>
-                            <div class="card-logo">
-                                <i class="fab fa-cc-visa" aria-hidden="true"></i>
+                            
+                            <div class="account-number">
+                                <span class="number-label">Account Number:</span>
+                                <span class="number-value" id="checking-account-number">•••• 4589</span>
+                                <button class="copy-btn" data-clipboard-target="#checking-account-number" aria-label="Copy account number">
+                                    <i class="far fa-copy"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="account-routing">
+                                <span class="routing-label">Routing #:</span>
+                                <span class="routing-value" id="checking-routing">021000021</span>
+                            </div>
+                            
+                            <div class="account-actions">
+                                <button class="action-btn transfer-btn" data-account="checking" aria-label="Transfer from checking">
+                                    <i class="fas fa-exchange-alt"></i>
+                                    <span>Transfer</span>
+                                </button>
+                                <button class="action-btn details-btn" data-account="checking" aria-label="View checking details">
+                                    <i class="fas fa-chart-line"></i>
+                                    <span>Details</span>
+                                </button>
                             </div>
                         </div>
-                        <div class="account-card secondary" role="region" aria-label="Savings account with balance $8,450.25">
-                            <div class="account-type">Savings Account</div>
-                            <div class="account-balance">$8,450.25</div>
-                            <div class="account-number">ACC-002-7890</div>
-                            <div class="account-apy">2.5% APY</div>
+
+                        <!-- Visa Debit Card -->
+                        <div class="card-visual" role="region" aria-label="Visa Debit Card">
+                            <div class="card-header">
+                                <div class="card-chip">
+                                    <i class="fas fa-microchip" aria-hidden="true"></i>
+                                </div>
+                                <div class="card-contactless">
+                                    <i class="fas fa-wifi" aria-hidden="true"></i>
+                                </div>
+                            </div>
+                            
+                            <div class="card-number">
+                                <span class="digit-group">4589</span>
+                                <span class="digit-group">2104</span>
+                                <span class="digit-group">8932</span>
+                                <span class="digit-group" id="card-last-four">4567</span>
+                            </div>
+                            
+                            <div class="card-info">
+                                <div class="card-holder">
+                                    <span class="label">Card Holder</span>
+                                    <span class="value">ALEX JOHNSON</span>
+                                </div>
+                                <div class="card-expiry">
+                                    <span class="label">Valid Thru</span>
+                                    <span class="value" id="card-expiry">12/26</span>
+                                </div>
+                            </div>
+                            
+                            <div class="card-logo">
+                                <i class="fab fa-cc-visa" aria-hidden="true"></i>
+                                <span class="card-type">Debit</span>
+                            </div>
+                            
+                            <div class="card-actions">
+                                <button class="card-action-btn" id="freeze-card" aria-label="Freeze card">
+                                    <i class="fas fa-snowflake"></i>
+                                    <span>Freeze</span>
+                                </button>
+                                <button class="card-action-btn" id="view-card-details" aria-label="View card details">
+                                    <i class="fas fa-eye"></i>
+                                    <span>Details</span>
+                                </button>
+                                <button class="card-action-btn" id="replace-card" aria-label="Replace card">
+                                    <i class="fas fa-redo"></i>
+                                    <span>Replace</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Savings Account Card -->
+                        <div class="account-card secondary savings" role="region" aria-label="Savings Account">
+                            <div class="account-header">
+                                <div class="account-type-badge">
+                                    <i class="fas fa-piggy-bank"></i>
+                                    <span>Savings</span>
+                                </div>
+                                <div class="account-apy">
+                                    <i class="fas fa-percentage"></i>
+                                    <span>2.5% APY</span>
+                                </div>
+                            </div>
+                            
+                            <div class="account-balance">
+                                <span class="balance-label">Current Balance</span>
+                                <span class="balance-amount">$<span id="savings-balance">8,450.25</span></span>
+                            </div>
+                            
+                            <div class="account-growth">
+                                <span class="growth-label">Monthly Interest</span>
+                                <span class="growth-amount positive">+$17.60</span>
+                            </div>
+                            
+                            <div class="account-number">
+                                <span class="number-label">Account #:</span>
+                                <span class="number-value" id="savings-account-number">SAV-7890-2341</span>
+                            </div>
+                            
+                            <div class="account-goal">
+                                <div class="goal-info">
+                                    <span>Goal: $10,000</span>
+                                    <span>75%</span>
+                                </div>
+                                <div class="goal-progress">
+                                    <div class="progress-bar" style="width: 75%"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="account-actions">
+                                <button class="action-btn deposit-btn" data-account="savings" aria-label="Deposit to savings">
+                                    <i class="fas fa-arrow-down"></i>
+                                    <span>Deposit</span>
+                                </button>
+                                <button class="action-btn withdraw-btn" data-account="savings" aria-label="Withdraw from savings">
+                                    <i class="fas fa-arrow-up"></i>
+                                    <span>Withdraw</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Credit Card -->
+                        <div class="account-card credit" role="region" aria-label="Credit Card">
+                            <div class="account-header">
+                                <div class="account-type-badge">
+                                    <i class="fas fa-credit-card"></i>
+                                    <span>Credit Card</span>
+                                </div>
+                                <div class="account-limit">
+                                    <span>Limit: $5,000</span>
+                                </div>
+                            </div>
+                            
+                            <div class="account-balance">
+                                <span class="balance-label">Current Balance</span>
+                                <span class="balance-amount">$<span id="credit-balance">1,245.50</span></span>
+                            </div>
+                            
+                            <div class="credit-utilization">
+                                <div class="utilization-header">
+                                    <span>Utilization</span>
+                                    <span>25%</span>
+                                </div>
+                                <div class="utilization-bar">
+                                    <div class="progress-bar" style="width: 25%"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="account-details">
+                                <div class="detail-item">
+                                    <span class="detail-label">Due Date</span>
+                                    <span class="detail-value" id="credit-due-date">Feb 15, 2024</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Min. Payment</span>
+                                    <span class="detail-value">$35.00</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">APR</span>
+                                    <span class="detail-value">18.9%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="account-actions">
+                                <button class="action-btn pay-btn" data-account="credit" aria-label="Pay credit card">
+                                    <i class="fas fa-money-check-alt"></i>
+                                    <span>Pay Bill</span>
+                                </button>
+                                <button class="action-btn statement-btn" data-account="credit" aria-label="View statement">
+                                    <i class="fas fa-file-invoice-dollar"></i>
+                                    <span>Statement</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -570,192 +755,4 @@
                 <div class="contact-container-modern">
                     <div class="form-side">
                         <div class="contact-form-card glass-card">
-                            <h3><i class="fas fa-paper-plane"></i> Send us a message</h3>
-                            <form id="contact-form" novalidate>
-                                <div class="form-group-modern">
-                                    <label for="contact-name" class="form-label-modern">
-                                        <i class="fas fa-user"></i> Full Name
-                                    </label>
-                                    <input type="text" id="contact-name" class="input-modern" placeholder="Your full name" required minlength="2" maxlength="50">
-                                </div>
-                                
-                                <div class="form-group-modern">
-                                    <label for="contact-email" class="form-label-modern">
-                                        <i class="fas fa-envelope"></i> Email Address
-                                    </label>
-                                    <input type="email" id="contact-email" class="input-modern" placeholder="your.email@example.com" required>
-                                </div>
-                                
-                                <div class="form-group-modern">
-                                    <label for="contact-subject" class="form-label-modern">
-                                        <i class="fas fa-tag"></i> Subject
-                                    </label>
-                                    <select id="contact-subject" class="input-modern" required>
-                                        <option value="">Select a subject</option>
-                                        <option value="account">Account Issue</option>
-                                        <option value="transaction">Transaction Problem</option>
-                                        <option value="security">Security Concern</option>
-                                        <option value="general">General Inquiry</option>
-                                        <option value="feedback">Feedback</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="form-group-modern">
-                                    <label for="contact-message" class="form-label-modern">
-                                        <i class="fas fa-comment"></i> Message
-                                    </label>
-                                    <textarea id="contact-message" class="input-modern" rows="5" placeholder="How can we help you?" required minlength="10" maxlength="1000"></textarea>
-                                </div>
-                                
-                                <div class="form-actions-modern">
-                                    <button type="submit" class="btn-modern btn-modern-primary">
-                                        <i class="fas fa-paper-plane" aria-hidden="true"></i> Send Message
-                                    </button>
-                                    <button type="reset" class="btn-modern btn-modern-secondary">
-                                        <i class="fas fa-redo" aria-hidden="true"></i> Clear Form
-                                    </button>
-                                </div>
-                            </form>
-                            
-                            <div class="data-management">
-                                <h4><i class="fas fa-database"></i> Data Management</h4>
-                                <div class="data-buttons">
-                                    <button id="import-data" class="btn btn-secondary" aria-label="Import data from file">
-                                        <i class="fas fa-upload" aria-hidden="true"></i> Import Data
-                                    </button>
-                                    <button id="reset-all-data" class="btn btn-secondary" aria-label="Reset all application data">
-                                        <i class="fas fa-redo" aria-hidden="true"></i> Reset All Data
-                                    </button>
-                                </div>
-                                <input type="file" id="import-file" accept=".json" style="display: none;">
-                                <p class="data-info"><small>Last backup: <span id="last-backup">Never</span></small></p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="form-side">
-                        <div class="contact-info-card glass-card">
-                            <h3><i class="fas fa-headset"></i> Contact Information</h3>
-                            <div class="contact-details">
-                                <div class="contact-item">
-                                    <i class="fas fa-map-marker-alt" aria-hidden="true"></i>
-                                    <div>
-                                        <h4>Address</h4>
-                                        <p>123 Banking Street<br>Financial District, NY 10001</p>
-                                    </div>
-                                </div>
-                                <div class="contact-item">
-                                    <i class="fas fa-phone" aria-hidden="true"></i>
-                                    <div>
-                                        <h4>Phone</h4>
-                                        <p>(800) 555-BANK<br>Mon-Fri: 9am-5pm EST</p>
-                                    </div>
-                                </div>
-                                <div class="contact-item">
-                                    <i class="fas fa-envelope" aria-hidden="true"></i>
-                                    <div>
-                                        <h4>Email</h4>
-                                        <p>support@bankflow.com<br>help@bankflow.com</p>
-                                    </div>
-                                </div>
-                                <div class="contact-item">
-                                    <i class="fas fa-clock" aria-hidden="true"></i>
-                                    <div>
-                                        <h4>Support Hours</h4>
-                                        <p>24/7 Online Support<br>Phone: 9am-9pm EST</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="contact-messages-card glass-card">
-                            <div class="messages-header">
-                                <h4><i class="fas fa-history"></i> Recent Messages</h4>
-                                <button id="clear-messages" class="btn-small btn-secondary" aria-label="Clear all sent messages">
-                                    <i class="fas fa-trash" aria-hidden="true"></i> Clear
-                                </button>
-                            </div>
-                            <div class="messages-list" id="contact-messages" aria-live="polite">
-                                <!-- Contact messages will be loaded here -->
-                                <p class="empty-state">No messages sent yet.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-    
-    <!-- Footer -->
-    <footer class="footer" role="contentinfo">
-        <div class="footer-container">
-            <div class="footer-logo">
-                <i class="fas fa-university" aria-hidden="true"></i>
-                <h3>BankFlow</h3>
-                <p>Modern Online Banking</p>
-            </div>
-            
-            <div class="footer-links">
-                <a href="#dashboard"><i class="fas fa-home"></i> Dashboard</a>
-                <a href="#deposit"><i class="fas fa-arrow-down"></i> Deposit</a>
-                <a href="#withdraw"><i class="fas fa-arrow-up"></i> Withdraw</a>
-                <a href="#transactions"><i class="fas fa-exchange-alt"></i> Transactions</a>
-                <a href="#contact"><i class="fas fa-envelope"></i> Contact</a>
-            </div>
-            
-            <div class="footer-security">
-                <h4><i class="fas fa-shield-alt"></i> Security Features</h4>
-                <div class="security-features">
-                    <span><i class="fas fa-lock"></i> 256-bit Encryption</span>
-                    <span><i class="fas fa-check-circle"></i> Two-Factor Auth</span>
-                    <span><i class="fas fa-bell"></i> Real-time Alerts</span>
-                </div>
-            </div>
-            
-            <div class="footer-info">
-                <p>&copy; <span id="current-year">2024</span> BankFlow. All rights reserved.</p>
-                <p>This is a demonstration banking website. No real transactions are processed.</p>
-                <p>Data is stored locally in your browser using localStorage.</p>
-                <div class="version-info">
-                    <p>Version 2.0.0 | <span id="current-date">Loading...</span></p>
-                </div>
-            </div>
-        </div>
-    </footer>
-    
-    <!-- Notification Toast -->
-    <div id="toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="toast-content">
-            <i class="toast-icon" aria-hidden="true"></i>
-            <span class="toast-message">Notification message</span>
-        </div>
-        <button class="toast-close" aria-label="Close notification">&times;</button>
-    </div>
-    
-    <!-- Confirmation Modal -->
-    <div id="confirmation-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-message">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="modal-title">Confirm Action</h3>
-                <button class="modal-close" aria-label="Close modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p id="modal-message">Are you sure you want to proceed?</p>
-            </div>
-            <div class="modal-footer">
-                <button id="modal-cancel" class="btn btn-secondary">Cancel</button>
-                <button id="modal-confirm" class="btn btn-primary">Confirm</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Session Timer -->
-    <div id="session-timer" class="session-timer" aria-live="polite">
-        <i class="fas fa-clock" aria-hidden="true"></i>
-        <span>Session expires in: <span id="timer-minutes">30</span>:<span id="timer-seconds">00</span></span>
-    </div>
-
-    <script src="script.js" defer></script>
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js" defer></script>
-</body>
-</html>
+                            <h3><i class="fas fa-paper-plane"></i> Send us a message</h
